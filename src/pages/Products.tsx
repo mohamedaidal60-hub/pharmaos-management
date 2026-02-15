@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, Plus, Package, AlertTriangle, Eye, Edit } from "lucide-react";
-import { products, formatCurrency } from "@/data/mockData";
+import { Search, Plus, Package, AlertTriangle, Eye, Edit } from "lucide-react";
 import ActionModal from "@/components/ActionModal";
 import { usePendingActions } from "@/hooks/usePendingActions";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusLabels: Record<string, string> = {
   "in-stock": "En stock",
@@ -23,11 +23,31 @@ const Products = () => {
   const { submitAction } = usePendingActions();
 
   const [newProduct, setNewProduct] = useState({ name: "", genericName: "", category: "Antibiotiques", sku: "", wholesalePrice: "", retailPrice: "", quantity: "", reorderLevel: "50" });
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = [...new Set(products.map((p) => p.category))];
+  const fetchProducts = async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any).from("products").select("*").order("name");
+    if (error) {
+      toast.error("Erreur lors du chargement des produits");
+    } else {
+      setProducts(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const categories = [...new Set(products.map((p) => p.category || "Autre"))];
 
   const filtered = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.genericName.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      (p.name?.toLowerCase().includes(search.toLowerCase())) ||
+      (p.generic_name?.toLowerCase().includes(search.toLowerCase())) ||
+      (p.sku?.toLowerCase().includes(search.toLowerCase()));
     const matchesCategory = categoryFilter === "all" || p.category === categoryFilter;
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
@@ -36,18 +56,29 @@ const Products = () => {
   const viewProduct = products.find((p) => p.id === showView);
   const editProduct = products.find((p) => p.id === showEdit);
 
+  const formatCurrency = (amount: any) => {
+    const val = typeof amount === 'number' ? amount : parseFloat(amount || "0");
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "TZS" }).format(val);
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitAction("product_create", `Nouveau produit: ${newProduct.name}`, `Ajout de ${newProduct.name} (${newProduct.genericName}) au catalogue`, newProduct as any);
-    setShowAdd(false);
-    setNewProduct({ name: "", genericName: "", category: "Antibiotiques", sku: "", wholesalePrice: "", retailPrice: "", quantity: "", reorderLevel: "50" });
+    const success = await submitAction("product_create", `Nouveau produit: ${newProduct.name}`, `Ajout de ${newProduct.name} (${newProduct.genericName}) au catalogue`, newProduct as any);
+    if (success) {
+      setShowAdd(false);
+      setNewProduct({ name: "", genericName: "", category: "Antibiotiques", sku: "", wholesalePrice: "", retailPrice: "", quantity: "", reorderLevel: "50" });
+      fetchProducts();
+    }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editProduct) {
-      await submitAction("product_update", `Modification: ${editProduct.name}`, `Modification du produit ${editProduct.name}`, { productId: editProduct.id } as any);
-      setShowEdit(null);
+      const success = await submitAction("product_update", `Modification: ${editProduct.name}`, `Modification du produit ${editProduct.name}`, { productId: editProduct.id } as any);
+      if (success) {
+        setShowEdit(null);
+        fetchProducts();
+      }
     }
   };
 
@@ -63,7 +94,6 @@ const Products = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -82,7 +112,6 @@ const Products = () => {
         </select>
       </div>
 
-      {/* Table */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -102,19 +131,19 @@ const Products = () => {
             <tbody>
               {filtered.map((product) => (
                 <tr key={product.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="p-4"><div><p className="text-sm font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{product.genericName}</p></div></td>
+                  <td className="p-4"><div><p className="text-sm font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{product.generic_name}</p></div></td>
                   <td className="p-4 text-sm">{product.category}</td>
                   <td className="p-4 text-sm font-mono text-muted-foreground">{product.sku}</td>
-                  <td className="p-4 text-sm text-right">{formatCurrency(product.wholesalePrice)}</td>
-                  <td className="p-4 text-sm text-right font-medium">{formatCurrency(product.retailPrice)}</td>
+                  <td className="p-4 text-sm text-right">{formatCurrency(product.wholesale_price)}</td>
+                  <td className="p-4 text-sm text-right font-medium">{formatCurrency(product.retail_price)}</td>
                   <td className="p-4 text-sm text-right">
-                    <span className={product.quantity <= product.reorderLevel ? "text-warning font-medium" : ""}>{product.quantity}</span>
-                    {product.quantity <= product.reorderLevel && product.quantity > 0 && <AlertTriangle size={12} className="inline ml-1 text-warning" />}
+                    <span className={product.quantity <= (product.reorder_level || 5) ? "text-warning font-medium" : ""}>{product.quantity}</span>
+                    {product.quantity <= (product.reorder_level || 5) && product.quantity > 0 && <AlertTriangle size={12} className="inline ml-1 text-warning" />}
                   </td>
-                  <td className="p-4 text-sm text-muted-foreground">{product.expiryDate}</td>
+                  <td className="p-4 text-sm text-muted-foreground">{product.expiry_date || "N/A"}</td>
                   <td className="p-4">
                     <span className={product.status === "in-stock" ? "badge-success" : product.status === "low-stock" ? "badge-warning" : "badge-danger"}>
-                      {statusLabels[product.status]}
+                      {statusLabels[product.status] || product.status}
                     </span>
                   </td>
                   <td className="p-4">
@@ -133,62 +162,57 @@ const Products = () => {
         )}
       </motion.div>
 
-      {/* Add Product Modal */}
       <ActionModal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Ajouter un produit">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm font-medium block mb-1">Nom</label><input required value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
-            <div><label className="text-sm font-medium block mb-1">Nom générique</label><input required value={newProduct.genericName} onChange={(e) => setNewProduct({...newProduct, genericName: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Nom</label><input required value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Nom générique</label><input required value={newProduct.genericName} onChange={(e) => setNewProduct({ ...newProduct, genericName: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm font-medium block mb-1">Catégorie</label><select value={newProduct.category} onChange={(e) => setNewProduct({...newProduct, category: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm">{categories.map(c => <option key={c}>{c}</option>)}</select></div>
-            <div><label className="text-sm font-medium block mb-1">SKU</label><input required value={newProduct.sku} onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Catégorie</label><input required value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">SKU</label><input required value={newProduct.sku} onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm font-medium block mb-1">Prix gros (TZS)</label><input type="number" required value={newProduct.wholesalePrice} onChange={(e) => setNewProduct({...newProduct, wholesalePrice: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
-            <div><label className="text-sm font-medium block mb-1">Prix détail (TZS)</label><input type="number" required value={newProduct.retailPrice} onChange={(e) => setNewProduct({...newProduct, retailPrice: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Prix gros (TZS)</label><input type="number" required value={newProduct.wholesalePrice} onChange={(e) => setNewProduct({ ...newProduct, wholesalePrice: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Prix détail (TZS)</label><input type="number" required value={newProduct.retailPrice} onChange={(e) => setNewProduct({ ...newProduct, retailPrice: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm font-medium block mb-1">Quantité</label><input type="number" required value={newProduct.quantity} onChange={(e) => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
-            <div><label className="text-sm font-medium block mb-1">Seuil réapprovisionnement</label><input type="number" value={newProduct.reorderLevel} onChange={(e) => setNewProduct({...newProduct, reorderLevel: e.target.value})} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Quantité</label><input type="number" required value={newProduct.quantity} onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+            <div><label className="text-sm font-medium block mb-1">Seuil réapprovisionnement</label><input type="number" value={newProduct.reorderLevel} onChange={(e) => setNewProduct({ ...newProduct, reorderLevel: e.target.value })} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
           </div>
           <button type="submit" className="w-full h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">Soumettre pour validation</button>
         </form>
       </ActionModal>
 
-      {/* View Product Modal */}
       <ActionModal isOpen={!!showView} onClose={() => setShowView(null)} title={viewProduct?.name || "Détail produit"}>
         {viewProduct && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><p className="text-muted-foreground text-xs">Nom générique</p><p className="font-medium">{viewProduct.genericName}</p></div>
+              <div><p className="text-muted-foreground text-xs">Nom générique</p><p className="font-medium">{viewProduct.generic_name}</p></div>
               <div><p className="text-muted-foreground text-xs">Catégorie</p><p className="font-medium">{viewProduct.category}</p></div>
               <div><p className="text-muted-foreground text-xs">SKU</p><p className="font-mono">{viewProduct.sku}</p></div>
-              <div><p className="text-muted-foreground text-xs">Fabricant</p><p className="font-medium">{viewProduct.manufacturer}</p></div>
-              <div><p className="text-muted-foreground text-xs">Prix gros</p><p className="font-medium">{formatCurrency(viewProduct.wholesalePrice)}</p></div>
-              <div><p className="text-muted-foreground text-xs">Prix détail</p><p className="font-bold">{formatCurrency(viewProduct.retailPrice)}</p></div>
+              <div><p className="text-muted-foreground text-xs">Prix gros</p><p className="font-medium">{formatCurrency(viewProduct.wholesale_price)}</p></div>
+              <div><p className="text-muted-foreground text-xs">Prix détail</p><p className="font-bold">{formatCurrency(viewProduct.retail_price)}</p></div>
               <div><p className="text-muted-foreground text-xs">Quantité</p><p className="font-medium">{viewProduct.quantity}</p></div>
-              <div><p className="text-muted-foreground text-xs">Seuil réappro.</p><p className="font-medium">{viewProduct.reorderLevel}</p></div>
-              <div><p className="text-muted-foreground text-xs">N° Lot</p><p className="font-mono">{viewProduct.batchNumber}</p></div>
-              <div><p className="text-muted-foreground text-xs">Expiration</p><p className="font-medium">{viewProduct.expiryDate}</p></div>
-              <div><p className="text-muted-foreground text-xs">Emplacement</p><p className="font-medium">{viewProduct.location}</p></div>
-              <div><p className="text-muted-foreground text-xs">Statut</p><span className={viewProduct.status === "in-stock" ? "badge-success" : viewProduct.status === "low-stock" ? "badge-warning" : "badge-danger"}>{statusLabels[viewProduct.status]}</span></div>
+              <div><p className="text-muted-foreground text-xs">Seuil réappro.</p><p className="font-medium">{viewProduct.reorder_level}</p></div>
+              <div><p className="text-muted-foreground text-xs">Expiration</p><p className="font-medium">{viewProduct.expiry_date || "N/A"}</p></div>
+              <div><p className="text-muted-foreground text-xs">Emplacement</p><p className="font-medium">{viewProduct.location || "N/A"}</p></div>
+              <div><p className="text-muted-foreground text-xs">Statut</p><span className={viewProduct.status === "in-stock" ? "badge-success" : viewProduct.status === "low-stock" ? "badge-warning" : "badge-danger"}>{statusLabels[viewProduct.status] || viewProduct.status}</span></div>
             </div>
           </div>
         )}
       </ActionModal>
 
-      {/* Edit Product Modal */}
       <ActionModal isOpen={!!showEdit} onClose={() => setShowEdit(null)} title={`Modifier: ${editProduct?.name || ""}`}>
         {editProduct && (
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium block mb-1">Nom</label><input defaultValue={editProduct.name} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
-              <div><label className="text-sm font-medium block mb-1">Prix détail</label><input type="number" defaultValue={editProduct.retailPrice} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+              <div><label className="text-sm font-medium block mb-1">Prix détail</label><input type="number" defaultValue={editProduct.retail_price} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium block mb-1">Quantité</label><input type="number" defaultValue={editProduct.quantity} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
-              <div><label className="text-sm font-medium block mb-1">Seuil</label><input type="number" defaultValue={editProduct.reorderLevel} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
+              <div><label className="text-sm font-medium block mb-1">Seuil</label><input type="number" defaultValue={editProduct.reorder_level} className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" /></div>
             </div>
             <button type="submit" className="w-full h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">Soumettre la modification</button>
           </form>
