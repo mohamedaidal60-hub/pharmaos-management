@@ -24,10 +24,12 @@ const Dispensing = () => {
   });
 
   const handleDispense = async (rx: typeof prescriptions[0]) => {
+    toast.info(`Dispensation de ${rx.patientName} en cours...`);
     await submitAction("dispensing_create", `Dispensation: ${rx.patientName}`, `Dispensation des médicaments pour ${rx.patientName} (ordonnance Dr. ${rx.doctorName})`, { prescriptionId: rx.id, patientName: rx.patientName, medications: rx.medications } as any);
   };
 
   const handleHold = async (rx: typeof prescriptions[0]) => {
+    toast.warning(`Ordonnance de ${rx.patientName} mise en pause.`);
     await submitAction("dispensing_update", `Mise en pause: ${rx.patientName}`, `Mise en pause de l'ordonnance de ${rx.patientName}`, { prescriptionId: rx.id, action: "hold" } as any);
   };
 

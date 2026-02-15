@@ -195,9 +195,9 @@ export const calendarEvents = [
 ];
 
 export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("fr-DZ", {
+  return new Intl.NumberFormat("en-TZ", {
     style: "currency",
-    currency: "DZD",
+    currency: "TZS",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
