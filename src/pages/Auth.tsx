@@ -22,13 +22,9 @@ const Auth = () => {
       navigate("/");
       return;
     }
-    // Check if admin exists already
-    const checkAdmin = async () => {
-      const { data } = await supabase.functions.invoke("check-admin");
-      setIsSetup(!data?.hasAdmin);
-      setCheckingSetup(false);
-    };
-    checkAdmin().catch(() => setCheckingSetup(false));
+    // Simple check: assume setup is needed if no user is present and we are on /auth
+    // Or just always show login/signup toggle
+    setCheckingSetup(false);
   }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -49,6 +45,7 @@ const Auth = () => {
     setLoading(true);
 
     // Sign up first
+    // Note: Our SQL trigger 'on_auth_user_created' will handle profile and role creation
     const { error: signUpError } = await signUp(email, password, fullName);
     if (signUpError) {
       toast.error(signUpError.message);
@@ -56,24 +53,8 @@ const Auth = () => {
       return;
     }
 
-    // Sign in immediately (auto-confirm is on)
-    const { error: signInError } = await signIn(email, password);
-    if (signInError) {
-      toast.error(signInError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Call setup-admin to assign admin role
-    const { data, error } = await supabase.functions.invoke("setup-admin");
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Erreur lors de la configuration admin");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Compte administrateur créé avec succès !");
-    navigate("/");
+    toast.success("Compte créé avec succès ! Connectez-vous maintenant.");
+    setIsSetup(false); // Switch to login mode
     setLoading(false);
   };
 

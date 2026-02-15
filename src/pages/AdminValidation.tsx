@@ -54,7 +54,7 @@ const AdminValidation = () => {
   const { reviewAction } = usePendingActions();
   const [actions, setActions] = useState<PendingAction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("pending");
+  const [filter, setFilter] = useState<string>("all");
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
@@ -104,9 +104,8 @@ const AdminValidation = () => {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
           >
             {f === "all" ? "Tout" : statusConfig[f]?.label || f}
           </button>

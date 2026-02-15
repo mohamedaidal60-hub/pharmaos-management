@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
+import { usePendingActions } from "@/hooks/usePendingActions";
 
 interface UserProfile {
   id: string;
@@ -36,6 +37,7 @@ const UserManagement = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", password: "", fullName: "", role: "pharmacien" });
+  const { submitAction } = usePendingActions();
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -63,23 +65,20 @@ const UserManagement = () => {
     setCreating(true);
 
     try {
-      // Call edge function to create user
-      const { data, error } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: newUser.email,
-          password: newUser.password,
-          full_name: newUser.fullName,
-          role: newUser.role,
-        },
-      });
+      // Record the intent to create a user since we don't have Edge Functions
+      const success = await submitAction(
+        "other",
+        `Création utilisateur: ${newUser.fullName}`,
+        `Demande de création de compte pour ${newUser.email} avec le rôle ${newUser.role}`,
+        { ...newUser } as any
+      );
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      toast.success("Utilisateur créé avec succès");
-      setShowCreate(false);
-      setNewUser({ email: "", password: "", fullName: "", role: "pharmacien" });
-      fetchUsers();
+      if (success) {
+        toast.success("Demande de création envoyée à l'administrateur");
+        setShowCreate(false);
+        setNewUser({ email: "", password: "", fullName: "", role: "pharmacien" });
+        fetchUsers();
+      }
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de la création");
     }
