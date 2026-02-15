@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { CalendarDays, Plus, Clock, Users, BookOpen } from "lucide-react";
 import { calendarEvents } from "@/data/mockData";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const typeConfig: Record<string, { label: string; color: string }> = {
   task: { label: "Tâche", color: "bg-primary" },
@@ -30,7 +31,10 @@ const CalendarPage = () => {
           <h1 className="page-title">Calendrier</h1>
           <p className="page-subtitle">Planification des rendez-vous, réunions et tâches</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+        <button
+          onClick={() => toast.info("Fonctionnalité de planification bientôt disponible")}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+        >
           <Plus size={16} /> Nouvel événement
         </button>
       </div>
@@ -56,11 +60,10 @@ const CalendarPage = () => {
                 <button
                   key={day}
                   onClick={() => setSelectedDate(dateStr)}
-                  className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-0.5 transition-colors relative ${
-                    isSelected ? "bg-primary text-primary-foreground" :
-                    isToday ? "bg-primary/10 text-primary font-bold" :
-                    "hover:bg-muted"
-                  }`}
+                  className={`aspect-square rounded-lg text-sm flex flex-col items-center justify-center gap-0.5 transition-colors relative ${isSelected ? "bg-primary text-primary-foreground" :
+                      isToday ? "bg-primary/10 text-primary font-bold" :
+                        "hover:bg-muted"
+                    }`}
                 >
                   {day}
                   {events.length > 0 && (
@@ -94,10 +97,9 @@ const CalendarPage = () => {
                         <Clock size={10} />
                         <span>{event.time}</span>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded mt-1 inline-block ${
-                        event.type === "task" ? "badge-primary" :
-                        event.type === "meeting" ? "badge-info" : "badge-warning"
-                      }`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded mt-1 inline-block ${event.type === "task" ? "badge-primary" :
+                          event.type === "meeting" ? "badge-info" : "badge-warning"
+                        }`}>
                         {config?.label}
                       </span>
                     </div>

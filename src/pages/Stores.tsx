@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Store, MapPin, Phone, User, Settings, ArrowLeftRight, BarChart3, Plus } from "lucide-react";
 import { stores } from "@/data/mockData";
+import { toast } from "sonner";
 
 const Stores = () => {
   return (
@@ -10,7 +11,10 @@ const Stores = () => {
           <h1 className="page-title">Gestion Multi-Magasins</h1>
           <p className="page-subtitle">{stores.length} magasins — Tableau de bord centralisé</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+        <button
+          onClick={() => toast.info("Fonctionnalité d'ajout de magasin bientôt disponible")}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+        >
           <Plus size={16} /> Ajouter un magasin
         </button>
       </div>
@@ -63,13 +67,22 @@ const Stores = () => {
 
             {/* Actions */}
             <div className="flex gap-2 mt-4">
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+              <button
+                onClick={() => toast.info("Génération du rapport en cours...")}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
+              >
                 <BarChart3 size={12} /> Rapports
               </button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+              <button
+                onClick={() => toast.info("Interface de transfert inter-magasins...")}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
+              >
                 <ArrowLeftRight size={12} /> Transferts
               </button>
-              <button className="flex items-center justify-center p-2 rounded-lg border border-border hover:bg-muted transition-colors">
+              <button
+                onClick={() => toast.info("Paramètres du magasin...")}
+                className="flex items-center justify-center p-2 rounded-lg border border-border hover:bg-muted transition-colors"
+              >
                 <Settings size={14} className="text-muted-foreground" />
               </button>
             </div>
