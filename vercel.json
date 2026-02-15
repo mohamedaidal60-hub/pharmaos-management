@@ -1,15 +1,8 @@
 {
-    "github": {
-        "silent": true
-    },
     "cleanUrls": true,
-    "framework": "vite",
-    "installCommand": "npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
     "rewrites": [
         {
-            "source": "/((?!api|_next/static|_next/image|static|images|css|js|fonts|img|svg|png|jpg|jpeg|gif|webp|ico|json|xml|txt|pdf|mp4|webm|ogg|mp3|wav|flac|aac|woff|woff2|eot|ttf|otf).*)",
+            "source": "/(.*)",
             "destination": "/index.html"
         }
     ]
